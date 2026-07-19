@@ -4,31 +4,28 @@ import torch
 from PIL import Image, ImageDraw
 from torchvision import transforms
 
-from model import OrthosageLandmarkRegressor
+from model import HRNetW32, LANDMARK_LABELS
 
-LANDMARK_LABELS = [
-    "Sella (S)",
-    "Nasion (N)",
-    "A-Point (A)",
-    "B-Point (B)",
-    "Pogonion (Pog)",
-]
+INPUT_SIZE = 768
 
 
 class OrthodonticAIService:
     def __init__(self, weights_path: str | None = None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = OrthosageLandmarkRegressor(num_landmarks=len(LANDMARK_LABELS))
+        self.model = HRNetW32()
 
         if weights_path:
-            state_dict = torch.load(weights_path, map_location=self.device)
+            # weights_only=True is safe by construction: it refuses to unpickle
+            # anything but plain tensors, so it can't execute arbitrary code
+            # even if the checkpoint file were tampered with.
+            state_dict = torch.load(weights_path, map_location=self.device, weights_only=True)
             self.model.load_state_dict(state_dict)
 
         self.model.to(self.device)
         self.model.eval()
 
         self.preprocess = transforms.Compose([
-            transforms.Resize((512, 512)),
+            transforms.Resize((INPUT_SIZE, INPUT_SIZE)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
@@ -38,17 +35,27 @@ class OrthodonticAIService:
         input_tensor = self.preprocess(image).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
-            predictions = torch.sigmoid(self.model(input_tensor))
+            heatmaps = self.model(input_tensor)[0]  # (num_landmarks, heatmap_h, heatmap_w)
 
-        # predictions are normalized [0, 1] coordinates; flat -> (num_landmarks, 2)
-        coords = predictions.view(-1, 2).cpu().numpy()
+        heatmap_h, heatmap_w = heatmaps.shape[1], heatmaps.shape[2]
 
         landmarks = []
-        for label, (norm_x, norm_y) in zip(LANDMARK_LABELS, coords):
+        for label, heatmap in zip(LANDMARK_LABELS, heatmaps):
+            peak_index = torch.argmax(heatmap)
+            heatmap_y = (peak_index // heatmap_w).item()
+            heatmap_x = (peak_index % heatmap_w).item()
+
+            # heatmap space -> model input space -> original image space
+            input_x = (heatmap_x + 0.5) * (INPUT_SIZE / heatmap_w)
+            input_y = (heatmap_y + 0.5) * (INPUT_SIZE / heatmap_h)
+            x = input_x * (original_width / INPUT_SIZE)
+            y = input_y * (original_height / INPUT_SIZE)
+
             landmarks.append({
                 "label": label,
-                "x": round(float(norm_x) * original_width, 1),
-                "y": round(float(norm_y) * original_height, 1),
+                "x": round(float(x), 1),
+                "y": round(float(y), 1),
+                "confidence": round(float(heatmap.max()), 3),
             })
         return landmarks
 
