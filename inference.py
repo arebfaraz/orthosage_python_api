@@ -65,6 +65,11 @@ class OrthodonticAIService:
         draw = ImageDraw.Draw(image)
         radius = max(4, round(min(image.width, image.height) * 0.006))
 
+        if len(landmarks) > 1:
+            line_width = max(2, round(radius * 0.5))
+            polyline = [(point["x"], point["y"]) for point in landmarks]
+            draw.line(polyline, fill=(20, 184, 166), width=line_width, joint="curve")
+
         for point in landmarks:
             x, y = point["x"], point["y"]
             draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=(20, 184, 166), outline=(255, 255, 255), width=2)
