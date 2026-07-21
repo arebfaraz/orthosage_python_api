@@ -3,3 +3,5 @@ wheels/
 __pycache__/
 *.pyc
 .DS_Store
+venv/
+DEPLOYMENT.md
