@@ -8,6 +8,72 @@ from model import HRNetW32, LANDMARK_LABELS
 
 INPUT_SIZE = 768
 
+# Groups of landmarks that form one continuous anatomical structure, each
+# traced as its own smooth curve rather than one straight line through every
+# detected point in arbitrary order.
+TRACING_CHAINS = [
+    ["Sella (S)", "Nasion (N)"],
+    ["Nasion (N)", "A-Point (A)", "B-Point (B)", "Pogonion (Pog)", "Gnathion (Gn)", "Menton (Me)"],
+    ["Articulare (Ar)", "Gonion (Go)", "Menton (Me)"],
+    ["Posterior Nasal Spine (PNS)", "Anterior Nasal Spine (ANS)"],
+    ["Orbitale (Or)", "Porion (Po)"],
+    ["Subnasale (Sn)", "Upper Lip", "Lower Lip", "Soft Tissue Pogonion"],
+    ["Upper Incisor Tip (U1)", "Lower Incisor Tip (L1)"],
+]
+
+
+def _catmull_rom_point(p0, p1, p2, p3, t):
+    t2 = t * t
+    t3 = t2 * t
+    x = 0.5 * (
+        2 * p1[0] + (p2[0] - p0[0]) * t
+        + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2
+        + (3 * p1[0] - p0[0] - 3 * p2[0] + p3[0]) * t3
+    )
+    y = 0.5 * (
+        2 * p1[1] + (p2[1] - p0[1]) * t
+        + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2
+        + (3 * p1[1] - p0[1] - 3 * p2[1] + p3[1]) * t3
+    )
+    return (x, y)
+
+
+def _bow_points(p0, p1, bow_ratio=0.12, samples=20):
+    """Sample a quadratic-bezier arc between two points so a 2-point chain
+    (e.g. Sella-Nasion) still reads as a curve instead of a straight line."""
+    dx = p1[0] - p0[0]
+    dy = p1[1] - p0[1]
+    length = (dx ** 2 + dy ** 2) ** 0.5 or 1
+    bow = length * bow_ratio
+    cx = (p0[0] + p1[0]) / 2 + (-dy / length) * bow
+    cy = (p0[1] + p1[1]) / 2 + (dx / length) * bow
+
+    curve = []
+    for step in range(samples + 1):
+        t = step / samples
+        x = (1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * cx + t ** 2 * p1[0]
+        y = (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * cy + t ** 2 * p1[1]
+        curve.append((x, y))
+    return curve
+
+
+def _smooth_curve(points, samples_per_segment=16):
+    """Densely sample a Catmull-Rom spline through points so the drawn
+    polyline reads as a smooth anatomical curve instead of straight segments."""
+    if len(points) == 2:
+        return _bow_points(points[0], points[1])
+    if len(points) < 2:
+        return points
+
+    padded = [points[0], *points, points[-1]]
+    curve = []
+    for i in range(1, len(padded) - 2):
+        p0, p1, p2, p3 = padded[i - 1], padded[i], padded[i + 1], padded[i + 2]
+        for step in range(samples_per_segment):
+            curve.append(_catmull_rom_point(p0, p1, p2, p3, step / samples_per_segment))
+    curve.append(points[-1])
+    return curve
+
 
 class OrthodonticAIService:
     def __init__(self, weights_path: str | None = None):
@@ -66,9 +132,14 @@ class OrthodonticAIService:
         radius = max(4, round(min(image.width, image.height) * 0.006))
 
         if len(landmarks) > 1:
-            line_width = max(2, round(radius * 0.5))
-            polyline = [(point["x"], point["y"]) for point in landmarks]
-            draw.line(polyline, fill=(20, 184, 166), width=line_width, joint="curve")
+            line_width = max(1, round(radius * 0.3))
+            point_map = {point["label"]: (point["x"], point["y"]) for point in landmarks}
+            for chain in TRACING_CHAINS:
+                chain_points = [point_map[label] for label in chain if label in point_map]
+                if len(chain_points) < 2:
+                    continue
+                curve = _smooth_curve(chain_points)
+                draw.line(curve, fill=(19, 20, 228), width=line_width, joint="curve")
 
         for point in landmarks:
             x, y = point["x"], point["y"]
