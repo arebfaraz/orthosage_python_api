@@ -1,9 +1,13 @@
 import base64
 import io
 import os
+import logging
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from PIL import Image
+
+
+logger = logging.getLogger(__name__)
 
 from inference import OrthodonticAIService
 from landmarks import (
@@ -46,26 +50,51 @@ landmark_service = LandmarkDetectionService(
 def health():
     return {"status": "ok"}
 
-
 @app.post("/image-digitization")
 async def image_digitization(image: UploadFile = File(...)):
+    # Validate uploaded file
     if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=422, detail="Uploaded file must be an image.")
+        raise HTTPException(
+            status_code=422,
+            detail="Uploaded file must be an image.",
+        )
 
     image_bytes = await image.read()
 
+    if not image_bytes:
+        raise HTTPException(
+            status_code=422,
+            detail="Uploaded image is empty.",
+        )
+
+    # Validate image
     try:
         with Image.open(io.BytesIO(image_bytes)) as probe:
             width, height = probe.size
     except Exception:
-        raise HTTPException(status_code=422, detail="Could not read the uploaded image.")
+        raise HTTPException(
+            status_code=422,
+            detail="Could not read the uploaded image.",
+        )
 
-    landmarks = ai_service.run_inference(image_bytes, width, height)
-    marked_image_bytes = ai_service.annotate_image(image_bytes, landmarks)
-    marked_image = "data:image/png;base64," + base64.b64encode(marked_image_bytes).decode("ascii")
+    try:
+        landmarks = ai_service.run_inference(image_bytes, width, height)
+        marked_image_bytes = ai_service.annotate_image(image_bytes, landmarks)
 
-    return {"landmarks": landmarks, "marked_image": marked_image}
+        return {
+            "landmarks": landmarks,
+            "marked_image": (
+                "data:image/png;base64,"
+                + base64.b64encode(marked_image_bytes).decode("ascii")
+            ),
+        }
 
+    except Exception:
+        logger.exception("Image digitization failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process image.",
+        )
 
 @app.post("/landmarks")
 async def detect_landmarks(image_type: str = Form(...), image: UploadFile = File(...)):
