@@ -1,0 +1,9 @@
+2026-09-10 00:58:50.836940: E tensorflow/core/platform/windows/subprocess.cc:287] Call to CreateProcess failed. Error code: 2, command: '"ptxas.exe" "--version"'
+2026-09-10 00:58:50.837889: E tensorflow/core/platform/windows/subprocess.cc:287] Call to CreateProcess failed. Error code: 2, command: '"ptxas.exe" "--version"'
+2026-09-10 00:58:50.838029: W tensorflow/stream_executor/gpu/asm_compiler.cc:80] Couldn't get ptxas version string: INTERNAL: Couldn't invoke ptxas.exe --version
+2026-09-10 00:58:50.843135: E tensorflow/core/platform/windows/subprocess.cc:287] Call to CreateProcess failed. Error code: 2, command: '"ptxas.exe" "C:\Users\E-SPORTS\AppData\Local\Temp\/tempfile-TITAN-V06-2410-4360-65b109a8d949e" "-o" "C:\Users\E-SPORTS\AppData\Local\Temp\/tempfile-TITAN-V06-2410-4360-65b109a8da656" "-arch=sm_86" "--warn-on-spills"'
+2026-09-10 00:58:50.843395: W tensorflow/stream_executor/gpu/redzone_allocator.cc:314] INTERNAL: Failed to launch ptxas
+Relying on driver to perform ptx compilation. 
+Modify $PATH to customize ptxas location.
+This message will be only logged once.
+2026-09-10 00:58:51.028743: W tensorflow/core/common_runtime/bfc_allocator.cc:360] Garbage collection: deallocate free memory regions (i.e., allocations) so that we can re-allocate a larger region to avoid OOM due to memory fragmentation. If you see this message frequently, you are running near the threshold of the available device memory and re-allocation may incur great performance overhead. You may try smaller batch sizes to observe the performance impact. Set TF_ENABLE_GPU_GARBAGE_COLLECTION=false if you'd like to disable this feature.

@@ -1,7 +1,16 @@
 weights/
 wheels/
+*.h5
 __pycache__/
 *.pyc
 .DS_Store
-venv/
+.venv/
 DEPLOYMENT.md
+
+# Datasets, masks and generated outputs (not pushed to git)
+Data/
+Custom_Masks/
+Original_Masks/
+Scores_and_Test/
+Viewing_Estimations/
+Binary_Image_Analysis/

@@ -1,0 +1,29 @@
+# Local training + serving stack (Windows, Python 3.10).
+# TensorFlow 2.10 is the last release with native Windows GPU support; the
+# nvidia-*-cu11 wheels supply the CUDA 11.8 / cuDNN 8.9 DLLs so no system-wide
+# CUDA toolkit install is needed (train.py / api.py add them to the DLL path).
+
+tensorflow==2.10.1
+numpy==1.26.4
+pillow==12.3.0
+opencv-python==4.11.0.86
+scipy==1.15.3
+scikit-learn==1.7.2
+pandas==2.3.3
+pyarrow==25.0.1
+natsort==8.4.0
+
+# --- API only ---
+fastapi==0.141.1
+uvicorn==0.52.4
+python-multipart==0.0.32
+
+# --- GPU runtime (optional for CPU-only serving; required for GPU training) ---
+nvidia-cublas-cu11==11.11.3.6
+nvidia-cuda-nvrtc-cu11==11.8.89
+nvidia-cuda-runtime-cu11==11.8.89
+nvidia-cudnn-cu11==8.9.5.29
+nvidia-cufft-cu11==10.9.0.58
+nvidia-curand-cu11==10.3.0.86
+nvidia-cusolver-cu11==11.4.1.48
+nvidia-cusparse-cu11==11.7.5.86
