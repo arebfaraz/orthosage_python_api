@@ -99,3 +99,23 @@ endpoints still work and these return 503 (reason shown in `/health`).
 curl -X POST "https://py.ekict.com/analyze-gingivitis" -F "file=@mouth.jpg"
 curl -X POST "https://py.ekict.com/analyze-gingivitis-image" -F "file=@mouth.jpg" -o annotated.jpg
 ```
+
+## Lateral-ceph endpoint
+
+Ported from `orthosage_python2_api` (`POST /predict` on py1.ekict.com), see
+`lateral_ceph/`. HRNet-W32, 29 lateral-cephalogram landmarks. Request and
+response are unchanged from py1; only the URL is new.
+
+| Method | Path | Returns | Notes |
+|--------|------|---------|-------|
+| POST | `/analyze/lateral-ceph` | JSON | `{"landmarks": {"S": {"x", "y", "label"}, ...}, "width", "height"}` in original pixels |
+| POST | `/analyze/lateral-ceph?format=image` | `image/png` | landmarks drawn on the input |
+
+Weights are **not in git**: copy py1's `runs/train/full_run/best.pt` to
+`lateral_ceph/weights/best.pt` (or set `LATERAL_CEPH_WEIGHTS`).
+
+```bash
+# was: curl -X POST "https://py1.ekict.com/predict" -F "file=@ceph.png"
+curl -X POST "https://py.ekict.com/analyze/lateral-ceph" -F "file=@ceph.png"
+curl -X POST "https://py.ekict.com/analyze/lateral-ceph?format=image" -F "file=@ceph.png" -o landmarks.png
+```
