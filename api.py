@@ -11,6 +11,9 @@ Endpoints
     POST /segment         -> image/png  (binary teeth mask, original resolution)
     POST /overlay         -> image/png  (mask drawn over the input)
     POST /analyze         -> JSON: teeth_count + base64 mask / overlay / cca images
+    POST /analyze-gingivitis        -> JSON: intraoral-photo findings (gingivitis,
+                                       recession, caries, plaque), see gingivitis/
+    POST /analyze-gingivitis-image  -> image/jpeg: the same findings drawn on the photo
 """
 import io
 import os
@@ -46,6 +49,7 @@ from fastapi import FastAPI, File, UploadFile, Query, HTTPException  # noqa: E40
 from fastapi.responses import Response, JSONResponse  # noqa: E402
 
 from cca import cca_analysis  # noqa: E402
+import gingivitis  # noqa: E402
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(HERE, "dental_xray_seg.h5"))
@@ -60,6 +64,7 @@ for _g in tf.config.list_physical_devices("GPU"):
 app = FastAPI(title="Teeth Segmentation API",
               description="U-Net semantic segmentation of teeth in panoramic dental X-rays.",
               version="1.0.0")
+app.include_router(gingivitis.router)
 
 _model = None
 
@@ -118,6 +123,7 @@ def health():
         "model_loaded": _model is not None,
         "gpu": [d.name for d in tf.config.list_physical_devices("GPU")],
         "input_size": INPUT_SIZE,
+        "gingivitis": gingivitis.router_status(),
     }
 
 
@@ -181,3 +187,4 @@ def _warm():
         print("[api] model warm")
     except Exception as e:  # noqa: BLE001
         print(f"[api] WARNING: model not ready: {e}")
+    gingivitis.load_models()

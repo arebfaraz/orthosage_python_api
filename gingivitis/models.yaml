@@ -1,0 +1,46 @@
+# gingivitis/models.yaml
+# ─────────────────────────────────────────────
+# Model registry for the intraoral-photo endpoints (gingivitis/router.py),
+# ported from BinaModel_project/configs/api.yaml.
+#
+# Every enabled model runs on each uploaded image; detections are merged
+# into one response keyed by condition.
+#
+# Per-model fields:
+#   weights:   path to .pt, relative to this folder (or absolute);
+#              the folder can be overridden with GINGIVITIS_WEIGHTS_DIR
+#   imgsz:     inference size (match the training imgsz)
+#   conf:      min confidence to report a detection
+#   iou:       NMS IoU threshold
+#   classes:   optional whitelist of class names to keep from this model;
+#              omit to keep every class
+#   enabled:   false keeps it registered but skipped by default
+#              (callers can still request it via ?models=...)
+
+device: auto          # auto | cpu | mps | cuda | 0
+
+# Classes that describe anatomy, not disease. Reported separately
+# under "anatomy" so they never show up as a finding.
+anatomy_classes: [tooth, gum, restoration]
+
+models:
+  gingivitis:
+    weights: weights/gingivitis.pt       # specialist_gingivitis_severe
+    imgsz:   640
+    conf:    0.45
+    iou:     0.45
+
+  recession:
+    weights: weights/recession.pt        # specialist_recession
+    imgsz:   640
+    conf:    0.38
+    iou:     0.45
+
+  # Multi-class seg model. Its gingivitis head scores ~0 mAP, so the
+  # gingivitis specialist above owns that condition.
+  intraoral_seg:
+    weights: weights/intraoral_seg.pt    # intraoral/yolo26s_seg_1024
+    imgsz:   1024
+    conf:    0.30
+    iou:     0.45
+    classes: [caries, plaque, tooth, gum, restoration]

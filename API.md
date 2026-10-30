@@ -73,3 +73,29 @@ open("cca.png", "wb").write(base64.b64decode(d["cca_png_b64"]))
   "cca_png_b64": "iVBORw0K..."
 }
 ```
+
+## Gingivitis / intraoral-photo endpoints
+
+Ported from `BinaModel_project` (see `gingivitis/`). Upload an **intraoral
+photo** (not an X-ray); every model in `gingivitis/models.yaml` runs on it
+(gingivitis specialist, recession specialist, intraoral seg for caries/plaque).
+
+| Method | Path | Returns | Notes |
+|--------|------|---------|-------|
+| POST | `/analyze-gingivitis` | JSON | findings per condition, anatomy counts, timings |
+| POST | `/analyze-gingivitis-image` | `image/jpeg` | boxes/masks drawn + legend; summary in `X-Conditions-Found`, `X-Total-Findings`, `X-Inference-Ms` headers |
+
+Query params (both): `models` (comma list, e.g. `gingivitis,recession`),
+`conf` (0–1, overrides each model's threshold), `labels` (`short`|`full`|`none`),
+`masks` (polygons; default false for JSON, true for image).
+`/analyze-gingivitis` also takes `annotate=true` to embed the JPEG as base64.
+
+Weights are **not in git** (`intraoral_seg.pt` is 115 MB). Copy them to the
+server at `gingivitis/weights/{gingivitis,recession,intraoral_seg}.pt`, or set
+`GINGIVITIS_WEIGHTS_DIR`. If they or torch/ultralytics are missing, the X-ray
+endpoints still work and these return 503 (reason shown in `/health`).
+
+```bash
+curl -X POST "https://py.ekict.com/analyze-gingivitis" -F "file=@mouth.jpg"
+curl -X POST "https://py.ekict.com/analyze-gingivitis-image" -F "file=@mouth.jpg" -o annotated.jpg
+```
