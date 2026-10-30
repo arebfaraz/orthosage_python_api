@@ -36,3 +36,11 @@ torch>=2.1.0
 torchvision>=0.16.0
 ultralytics==8.4.193
 PyYAML>=6.0
+
+# --- Facial photo analysis (face_analysis/, from orthosage_python2_api) ---
+# Pinned exactly (see orthosage_python2_api): newer mediapipe dropped the
+# legacy API and crashes in FaceLandmarker. It pulls opencv-contrib-python;
+# keep it on the same version as opencv-python above, since both provide cv2.
+# Headless Linux also needs: apt-get install -y libgles2 libegl1
+mediapipe==0.10.35
+opencv-contrib-python==4.11.0.86

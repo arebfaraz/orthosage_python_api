@@ -16,6 +16,9 @@ Endpoints
     POST /analyze-gingivitis-image  -> image/jpeg: the same findings drawn on the photo
     POST /analyze/lateral-ceph      -> JSON (or PNG with ?format=image): 29 lateral-ceph
                                        landmarks (HRNet), see lateral_ceph/
+    POST /analyze-face              -> JSON (or PNG with ?format=image): frontal-photo
+                                       landmarks + reference lines, see face_analysis/
+    POST /analyze-face/recompute    -> JSON: lines re-derived from edited landmarks
 """
 import io
 import os
@@ -53,6 +56,7 @@ from fastapi.responses import Response, JSONResponse  # noqa: E402
 from cca import cca_analysis  # noqa: E402
 import gingivitis  # noqa: E402
 import lateral_ceph  # noqa: E402
+import face_analysis  # noqa: E402
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(HERE, "dental_xray_seg.h5"))
@@ -69,6 +73,7 @@ app = FastAPI(title="Teeth Segmentation API",
               version="1.0.0")
 app.include_router(gingivitis.router)
 app.include_router(lateral_ceph.router)
+app.include_router(face_analysis.router)
 
 _model = None
 
@@ -129,6 +134,7 @@ def health():
         "input_size": INPUT_SIZE,
         "gingivitis": gingivitis.router_status(),
         "lateral_ceph": lateral_ceph.router_status(),
+        "face": face_analysis.router_status(),
     }
 
 
@@ -194,3 +200,4 @@ def _warm():
         print(f"[api] WARNING: model not ready: {e}")
     gingivitis.load_models()
     lateral_ceph.load_models()
+    face_analysis.load_models()

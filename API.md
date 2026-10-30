@@ -119,3 +119,28 @@ Weights are **not in git**: copy py1's `runs/train/full_run/best.pt` to
 curl -X POST "https://py.ekict.com/analyze/lateral-ceph" -F "file=@ceph.png"
 curl -X POST "https://py.ekict.com/analyze/lateral-ceph?format=image" -F "file=@ceph.png" -o landmarks.png
 ```
+
+## Facial photo analysis endpoints
+
+Ported from `orthosage_python2_api` (`/analyze-face` on py1.ekict.com), see
+`face_analysis/`. Upload a **frontal face photo**; MediaPipe FaceLandmarker
+(model bundled at `face_analysis/assets/face_landmarker.task`) finds the face,
+and 22 named soft-tissue landmarks + reference lines (midsagittal, horizontal,
+lip canting, jaw taper) are derived. Request and response are unchanged from
+py1; only the domain is new.
+
+| Method | Path | Returns | Notes |
+|--------|------|---------|-------|
+| POST | `/analyze-face` | JSON | `width`, `height`, `landmarks` (`key`, `label`, `group`, `x`, `y`, `movable`), `lines`; 422 if no face found |
+| POST | `/analyze-face?format=image` | `image/png` | landmarks + lines drawn on the photo |
+| POST | `/analyze-face/recompute` | JSON | body `{"landmarks": [{"key","x","y"}], "height"}` → `{"lines": [...]}` |
+
+On a headless Linux server MediaPipe needs `apt-get install -y libgles2 libegl1`;
+otherwise `/health` shows the error under `face` and these return 503.
+
+```bash
+curl -X POST "https://py.ekict.com/analyze-face" -F "file=@face.jpg"
+curl -X POST "https://py.ekict.com/analyze-face?format=image" -F "file=@face.jpg" -o face_lines.png
+curl -X POST "https://py.ekict.com/analyze-face/recompute" -H "Content-Type: application/json" \
+     -d '{"landmarks":[{"key":"pupil_r","x":120,"y":88},{"key":"pupil_l","x":220,"y":90}],"height":400}'
+```
