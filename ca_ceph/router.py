@@ -33,6 +33,7 @@ from typing import Optional
 import cv2
 import numpy as np
 from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 HERE = Path(__file__).resolve().parent
 WEIGHTS_DIR = Path(os.environ.get("CA_CEPH_WEIGHTS_DIR", HERE / "weights"))
@@ -84,16 +85,23 @@ def status() -> dict:
 async def _run(file: UploadFile):
     """Upload → (gray image, preprocessing params, mean coords, per-fold coords),
     coords in original-image pixels."""
-    from .aalnet.scripts.serve import preprocess
-    from .aalnet.utils.coord_utils import coords_to_original
-
-    ens = STATE["ensemble"]
-    if ens is None:
+    if STATE["ensemble"] is None:
         raise HTTPException(503, f"ca-ceph models not loaded: {STATE['error']}")
 
     data = await file.read()
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, "image larger than 30 MB")
+    # Inference takes 10-20 s on CPU: run it in a worker thread so the event
+    # loop keeps serving every other route meanwhile. Ensemble.predict holds
+    # its own lock, so CA Ceph requests still run one at a time (bounded RAM).
+    return await run_in_threadpool(_infer, data)
+
+
+def _infer(data: bytes):
+    from .aalnet.scripts.serve import preprocess
+    from .aalnet.utils.coord_utils import coords_to_original
+
+    ens = STATE["ensemble"]
     gray = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_GRAYSCALE)
     if gray is None:
         raise HTTPException(400, "could not decode the uploaded file as an image")
@@ -145,12 +153,17 @@ async def analyze_ca_ceph_image(
                       description="points: numbered landmarks + midlines; "
                                   "tracing: cephalometric tracing through the landmarks"),
 ):
+    gray, _, coords, _ = await _run(file)
+    jpeg = await run_in_threadpool(_render, gray, coords, show_names, style)
+    return Response(jpeg, media_type="image/jpeg")
+
+
+def _render(gray, coords, show_names: bool, style: str) -> bytes:
     from .aalnet.scripts.serve import draw_overlay, draw_tracing
 
-    gray, _, coords, _ = await _run(file)
     draw = draw_tracing if style == "tracing" else draw_overlay
     ok, buf = cv2.imencode(".jpg", draw(gray, coords, show_names),
                            [cv2.IMWRITE_JPEG_QUALITY, 90])
     if not ok:
         raise HTTPException(500, "jpeg encode failed")
-    return Response(buf.tobytes(), media_type="image/jpeg")
+    return buf.tobytes()
