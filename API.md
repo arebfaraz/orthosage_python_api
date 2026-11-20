@@ -100,6 +100,36 @@ curl -X POST "https://py.ekict.com/analyze-gingivitis" -F "file=@mouth.jpg"
 curl -X POST "https://py.ekict.com/analyze-gingivitis-image" -F "file=@mouth.jpg" -o annotated.jpg
 ```
 
+## CA Ceph / PA-cephalogram endpoints
+
+Ported from the `CA Ceph` project (AALNet, see `ca_ceph/`). Upload an original
+**posteroanterior (PA) cephalogram**; it is skull-cropped, letterboxed to 800×800,
+run through the fold ensemble, and mapped back to original pixels.
+Research use only: not a medical device, not for clinical decisions
+(AALNet code + weights are CC BY-NC 4.0, see `ca_ceph/aalnet/LICENSE`).
+
+| Method | Path | Returns | Notes |
+|--------|------|---------|-------|
+| POST | `/analyze/ca-ceph` | JSON | 33 landmarks (`x`, `y` in original px, `fold_spread`) + asymmetry measurements |
+| POST | `/analyze/ca-ceph-image` | `image/jpeg` | landmarks + midlines (`style=points`) or a tracing (`style=tracing`) |
+
+Form fields: `file` (required); `pixel_spacing` (mm/px; measurements are in px
+if omitted) on `/analyze/ca-ceph`; `style` (`points`|`tracing`) and
+`show_names` (bool) on `/analyze/ca-ceph-image`.
+
+Only **fold0** is shipped (best validation MRE of the five; the paper's
+reported accuracy is the mean of single fold models, not an ensemble), so
+`fold_spread` is always 0. Its weights are **not in git** (~294 MB): put them at
+`ca_ceph/weights/fold0/checkpoint_best.pth` (or set `CA_CEPH_WEIGHTS_DIR`).
+Every `fold*/` found there is loaded, so the other folds from the CA Ceph
+project can be dropped back in for a 5-fold ensemble. Measured on 2 CPU
+threads: 1 fold ≈ 10 s and ≈ 3.5 GB peak RAM per request; 5 folds ≈ 70–125 s.
+
+```bash
+curl -X POST "https://py.ekict.com/analyze/ca-ceph" -F "file=@pa_ceph.jpg" -F "pixel_spacing=0.1"
+curl -X POST "https://py.ekict.com/analyze/ca-ceph-image" -F "file=@pa_ceph.jpg" -F "style=tracing" -o tracing.jpg
+```
+
 ## Lateral-ceph endpoint
 
 Ported from `orthosage_python2_api` (`POST /predict` on py1.ekict.com), see

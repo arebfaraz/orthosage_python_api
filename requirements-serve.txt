@@ -37,6 +37,11 @@ torchvision>=0.16.0
 ultralytics==8.4.193
 PyYAML>=6.0
 
+# --- CA Ceph / PA-cephalogram endpoints (ca_ceph/, AALNet from the CA Ceph project) ---
+# Shares torch with the gingivitis block above.
+timm>=1.0
+tqdm
+
 # --- Facial photo analysis (face_analysis/, from orthosage_python2_api) ---
 # Pinned exactly (see orthosage_python2_api): newer mediapipe dropped the
 # legacy API and crashes in FaceLandmarker. It pulls opencv-contrib-python;

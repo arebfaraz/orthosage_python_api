@@ -14,6 +14,9 @@ Endpoints
     POST /analyze-gingivitis        -> JSON: intraoral-photo findings (gingivitis,
                                        recession, caries, plaque), see gingivitis/
     POST /analyze-gingivitis-image  -> image/jpeg: the same findings drawn on the photo
+    POST /analyze/ca-ceph           -> JSON: 33 PA-ceph landmarks + asymmetry
+                                       measurements (AALNet), see ca_ceph/
+    POST /analyze/ca-ceph-image     -> image/jpeg: landmarks / tracing drawn on the ceph
     POST /analyze/lateral-ceph      -> JSON (or PNG with ?format=image): 29 lateral-ceph
                                        landmarks (HRNet), see lateral_ceph/
     POST /analyze-face              -> JSON (or PNG with ?format=image): frontal-photo
@@ -55,6 +58,7 @@ from fastapi.responses import Response, JSONResponse  # noqa: E402
 
 from cca import cca_analysis  # noqa: E402
 import gingivitis  # noqa: E402
+import ca_ceph  # noqa: E402
 import lateral_ceph  # noqa: E402
 import face_analysis  # noqa: E402
 
@@ -72,6 +76,7 @@ app = FastAPI(title="Teeth Segmentation API",
               description="U-Net semantic segmentation of teeth in panoramic dental X-rays.",
               version="1.0.0")
 app.include_router(gingivitis.router)
+app.include_router(ca_ceph.router)
 app.include_router(lateral_ceph.router)
 app.include_router(face_analysis.router)
 
@@ -133,6 +138,7 @@ def health():
         "gpu": [d.name for d in tf.config.list_physical_devices("GPU")],
         "input_size": INPUT_SIZE,
         "gingivitis": gingivitis.router_status(),
+        "ca_ceph": ca_ceph.router_status(),
         "lateral_ceph": lateral_ceph.router_status(),
         "face": face_analysis.router_status(),
     }
@@ -199,5 +205,6 @@ def _warm():
     except Exception as e:  # noqa: BLE001
         print(f"[api] WARNING: model not ready: {e}")
     gingivitis.load_models()
+    ca_ceph.load_models()
     lateral_ceph.load_models()
     face_analysis.load_models()
