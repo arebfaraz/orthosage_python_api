@@ -22,6 +22,8 @@ Endpoints
     POST /analyze-face              -> JSON (or PNG with ?format=image): frontal-photo
                                        landmarks + reference lines, see face_analysis/
     POST /analyze-face/recompute    -> JSON: lines re-derived from edited landmarks
+    POST /analyze/occlusogram       -> JSON: intraoral photo view + FDI tooth instances
+                                       (+ gingivitis grades on frontal views), see occlusogram/
 """
 import io
 import os
@@ -61,6 +63,7 @@ import gingivitis  # noqa: E402
 import ca_ceph  # noqa: E402
 import lateral_ceph  # noqa: E402
 import face_analysis  # noqa: E402
+import occlusogram  # noqa: E402
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(HERE, "dental_xray_seg.h5"))
@@ -79,6 +82,7 @@ app.include_router(gingivitis.router)
 app.include_router(ca_ceph.router)
 app.include_router(lateral_ceph.router)
 app.include_router(face_analysis.router)
+app.include_router(occlusogram.router)
 
 _model = None
 
@@ -141,6 +145,7 @@ def health():
         "ca_ceph": ca_ceph.router_status(),
         "lateral_ceph": lateral_ceph.router_status(),
         "face": face_analysis.router_status(),
+        "occlusogram": occlusogram.router_status(),
     }
 
 
@@ -208,3 +213,4 @@ def _warm():
     ca_ceph.load_models()
     lateral_ceph.load_models()
     face_analysis.load_models()
+    occlusogram.load_models()

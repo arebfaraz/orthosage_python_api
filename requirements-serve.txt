@@ -49,3 +49,7 @@ tqdm
 # Headless Linux also needs: apt-get install -y libgles2 libegl1
 mediapipe==0.10.35
 opencv-contrib-python==4.11.0.86
+
+# --- Intraoral photo occlusogram (occlusogram/, from orthosage_occlusogram) ---
+# Nothing new: uses torch, torchvision, ultralytics and PyYAML from the
+# gingivitis block above (Mask R-CNN + ResNet18 come with torchvision).

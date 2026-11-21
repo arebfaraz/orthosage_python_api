@@ -174,3 +174,33 @@ curl -X POST "https://py.ekict.com/analyze-face?format=image" -F "file=@face.jpg
 curl -X POST "https://py.ekict.com/analyze-face/recompute" -H "Content-Type: application/json" \
      -d '{"landmarks":[{"key":"pupil_r","x":120,"y":88},{"key":"pupil_l","x":220,"y":90}],"height":400}'
 ```
+
+## Intraoral occlusogram endpoint
+
+Ported from `orthosage_occlusogram` (IOP-Compass API, its `POST /analyze`), see
+`occlusogram/`. Upload **one intraoral photo** (frontal, left/right buccal,
+upper/lower occlusal). A ResNet18 classifies the view, Mask R-CNN segments
+FDI-numbered teeth, and on frontal views a YOLO model grades gingivitis per
+tooth. Request fields and response body are unchanged; only the path is new
+(`/analyze` here is the X-ray route).
+
+| Method | Path | Returns | Notes |
+|--------|------|---------|-------|
+| POST | `/analyze/occlusogram` | JSON | `classification`, `tooth_count`, `instances` (`fdi`, `score`, `contours`, `bbox`, `centroid`, `gingivitis`), `issues`, `gingivitis`, `timings` |
+
+Form fields (all optional except `file`):
+
+- `file`: PNG, JPEG or WebP, up to 40 MB.
+- `mirror_acquisition` (default `true`): photo taken through an intraoral
+  mirror. If wrong, left/right buccal swap and teeth get the contralateral FDI.
+- `view`: skip classification (`frontal`, `left_buccal`, `right_buccal`,
+  `upper_occlusal`, `lower_occlusal`).
+- `gingivitis` (default `true`): grade gingivitis (frontal views only).
+
+Errors: 400 (not an image / unknown view), 413 (too large), 415 (unsupported
+type), 503 (models not loaded). About 1.5–3.5 s per photo on CPU.
+
+```bash
+curl -X POST "https://py.ekict.com/analyze/occlusogram" -F "file=@photo.jpg"
+curl -X POST "https://py.ekict.com/analyze/occlusogram" -F "file=@photo.jpg" -F "mirror_acquisition=false"
+```
